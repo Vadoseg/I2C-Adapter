@@ -5,6 +5,8 @@
 #include <iostream>
 #include <fcntl.h> 
 #include <unistd.h>
+#include <sstream>
+#include <cmath>
 
 #include "i2c-functions.h"
 
@@ -59,13 +61,13 @@ int Open_dev(std::string dev_path){
 
     @return     true if read from Si570 register was successful and false in other case.
 *******************************************************************************/
-bool Read_Si570_Reg(int fd, int reg_num){
+bool Read_Si570_Reg(int fd, unsigned char reg_num){
     std::cout << "\n START READ Si570 REGISTER \n";
 
     bool status = false;
 
     unsigned char write_buf[1] = {reg_num};
-    unsigned char read_buf[1]  = {0x00};
+    unsigned char read_buf[1]  = {0x00000000};
     
     if (ioctl(fd, I2C_SLAVE_FORCE, Si570_addr) < 0){
         std::cout << "\n CANNOT REACH SLAVE (Si570) \n";
@@ -167,18 +169,31 @@ bool Read_Si570(int fd){
 
     bool status = false;
 
-    unsigned char write_buf[1] = {0};
-    unsigned char read_buf[5] = {read_regs.First_freq_bits, read_regs.Second_freq_bits, read_regs.Third_freq_bits, read_regs.Forth_freq_bits, read_regs.Fifth_freq_bits};
+    unsigned char write_buf[6] = {7, 8, 9, 10, 11, 12};
+    unsigned char read_buf[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-    write(fd, write_buf, 1);
-
-    if (read(fd, (unsigned char *)read_regs.First_freq_bits, 1) != 1){        // TEST OF (unsigned char *)read_regs.First_freq_bits - DATA IN First_freq_bits NEED TO CHANGE
-        std::cout << "\n READ ALL Si570 - FAIL\n";
+    if (ioctl(fd, I2C_SLAVE_FORCE, Si570_addr) < 0){
+        std::cout << "\n CANNOT REACH SLAVE (Si570) \n";
         return status;
     }
 
-    printf("TEEEEEEEEEEEEEEEEEEEEST 0x%X", read_regs.First_freq_bits);  // If ok need to make FOR with all freq_bits
+    for (int i = 0; i < 6; i++){
 
+        if (write(fd, &write_buf[i], 1) != 1){
+            std::cout << "\n READ ALL Si570 - FAIL ON " << i << " REG \n";
+            return status;
+        }
+
+        if (read(fd, &read_buf[i], 1) != 1){
+            std::cout << "\n READ ALL Si570 - FAIL ON " << i << " REG \n";
+            return status;
+        }
+
+        // std::cout << "\n DATA FROM " << i << " REG: " << std::hex << read_buf[i];
+        printf("\n CHECK READ = 0x%X \n", read_buf[i]);
+    }
+
+    Freq_calculaton(read_buf);
 
     status = true;
 
@@ -189,22 +204,40 @@ bool Read_Si570(int fd){
 
     @brief      Calculation of frequency in MHz for Si570
 
-    @param      
+    @param      read_buf is a buffer that stores the value from the Si570 registers 
 
     @return     returns fully calculated frequency from Si570
 *******************************************************************************/
-int Freq_calculaton(){
+template <size_t size>
+float Freq_calculaton(unsigned char (&read_buf)[size]){
     std::cout << "\n START CALCULATION OF FREQUENCY FROM Si570 \n";
+
+    std::ostringstream ss;
+    float result       = 0;
+    float factory_fout = 156.25;  // In MHz (Info from dts)
+
+    uint8_t HS_DIV   = (read_buf[0] >> 5 & 0b00000111) + 4;                                     // HS_DIV takes up only 3 bits and we need to add +4 bcs datasheet says this
     
-    uint8_t reg_freq = read_regs.First_freq_bits + read_regs.Second_freq_bits + read_regs.Third_freq_bits + read_regs.Forth_freq_bits + read_regs.Fifth_freq_bits;  // NEED TO DIVIDE HS_DIV, N1 FROM ACTUAL FREQUENCY
+    uint8_t N1       = (read_buf[0] << 3 & 0b1111100) + (read_buf[1] >> 6 & 0b0000011) + 1;     // We need 0b00000011, but we need to add +1 bcs datasheet says that data writes in registers with -1 (Look datasheet for more info)
 
-    int result   = 0;
+    float RFREQ        = (read_buf[1] & 0b00111111);
 
-    int HS_DIV   = 0,
-        N1       = 0;     // Dividers
 
-    int factory_fout = 156.25;  // In MHz (Info from dts)
+    ss << std::hex << std::uppercase << RFREQ;   // Add 6 bits cut from register 8
 
+    for (int i = 2; i < sizeof(read_buf); i++){
+        ss << std::hex << std::uppercase << static_cast<int>(read_buf[i]);  // Add another registers (static_cast<int> need to change unsigned char to int)
+    }
+
+    std::cout << "\n RFREQ IN HEX: " << ss.str() << "\n";
+    
+    RFREQ = std::stoi(ss.str(), nullptr, 16); // Change string to int
+
+    RFREQ = RFREQ / pow(2, 28);
+
+    result = (factory_fout * HS_DIV * N1) / RFREQ;  // Formula
+
+    std::cout << "\n REAL FREQUENCY: " << result << "\n";
 
     return result;
 }
