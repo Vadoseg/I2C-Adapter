@@ -7,35 +7,29 @@
 
 
 
-#define Si570_dev       "/dev/i2c-1"
-#define Si570_addr      0x5D
+#define Si570_dev               "/dev/i2c-1"
+#define Si570_addr              0x5D
 
-#define TCA9548_dev     "/dev/i2c-0"
-#define TCA9548_addr    0x74
+#define TCA9548_dev             "/dev/i2c-0"
+#define TCA9548_addr            0x74
 
-#define EEPROM_dev      "/dev/i2c-3"
-#define EEMPROM_addr    0x54
+#define EEPROM_dev              "/dev/i2c-3"
+#define EEMPROM_addr            0x54
 
-typedef struct {
+#define Si570_Startup_Freq      148.5   // In MHz (Info from dts)
 
-    uint8_t First_freq_bits    : 8;
-    uint8_t Second_freq_bits   : 8;
-    uint8_t Third_freq_bits    : 8;
-    uint8_t Forth_freq_bits    : 8;
-    uint8_t Fifth_freq_bits    : 8;    // There are 40 bits, but the last 2 bits belong to N1 - that is a divider
+void Stat_check         (bool status, std::string msg);
+int  Open_dev           (std::string dev_path);
 
-} Si570_DATA;
+bool Read_Si570_Reg     (int fd, unsigned char reg_num);
+bool Read_Si570         (int fd);
 
-void Stat_check     (bool status, std::string msg);
-int  Open_dev       (std::string dev_path);
-
-bool Read_Si570_Reg (int fd, unsigned char reg_num);
-bool Read_Si570     (int fd);
-
-bool Write_EEPROM   (int fd, int write_data);
-bool Read_EEPROM    (int fd);
+bool Write_EEPROM       (int fd, int write_data);
+bool Read_EEPROM        (int fd);
 
 template <size_t size>
-float   Freq_calculaton(unsigned char (&read_buf)[size]);
+bool Freq_calculation   (unsigned char (&read_buf)[size]);
+
+bool iic_rd(int &fd, const unsigned char* addr, unsigned char* &data);
 
 #endif /* SRC_I2C-FUNCTIONS_H_ */

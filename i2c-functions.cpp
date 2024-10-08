@@ -10,8 +10,6 @@
 
 #include "i2c-functions.h"
 
-static Si570_DATA read_regs;   // Try to make it global struct and with that there is no need to transmit it to the functions
-
 /*****************************************************
 
     @brief      Checking status == true or false and sending
@@ -66,8 +64,8 @@ bool Read_Si570_Reg(int fd, unsigned char reg_num){
 
     bool status = false;
 
-    unsigned char write_buf[1] = {reg_num};
-    unsigned char read_buf[1]  = {0x00000000};
+    unsigned char write_buf[1]  = {reg_num};
+    unsigned char read_buf [1]  = {0x00};
     
     if (ioctl(fd, I2C_SLAVE_FORCE, Si570_addr) < 0){
         std::cout << "\n CANNOT REACH SLAVE (Si570) \n";
@@ -106,7 +104,7 @@ bool Write_EEPROM(int fd, int write_data){
 
     bool status = false;
 
-    unsigned char write_buf[1] = {0xFF};
+    unsigned char write_buf[1] = {write_data};
 
     if (ioctl(fd, I2C_SLAVE_FORCE, EEMPROM_addr) < 0){
         std::cout << "\n CANNOT REACH SLAVE (EEPROM) \n";
@@ -136,21 +134,32 @@ bool Read_EEPROM(int fd){
     std::cout << "\n START READING FROM EEPROM \n";
 
     bool status = false;
-    unsigned char read_buf[1] = {0x00};
+    unsigned char write_buf[1] = {0x1};
+
+    unsigned char read_buf [1] = {0x0};
 
     if (ioctl(fd, I2C_SLAVE_FORCE, EEMPROM_addr) < 0){
         std::cout << "\n CANNOT REACH SLAVE (EEPROM) \n";
         return status;
     }
 
-    if (read(fd, read_buf, 1) != 1){
-        std::cout << "\n EEPROM READ - FAIL \n";
+
+    if (write(fd, write_buf, 1) != 1){
+        std::cout << "\n EEPROM CHOOSE OF " << 1 << " REG - FAILED \n";
         return status;
     }
-    
 
-    printf("\n CHECK READ = 0x%X \n", read_buf);
-    printf("\n READ DECIMAL DATA: %d \n", read_buf);    // read_buf[0]
+    if (read(fd, read_buf, 1) != 1){
+        std::cout << "\n  EEPROM READ - FAIL ON " << 1 << " REG \n";
+        return status;
+    }
+
+    printf("\n CHECK READ = 0x%X \n", read_buf[0]);    
+    printf("\n READ DECIMAL DATA: %d \n", read_buf[0]);
+
+    // printf("\n CHECK READ = 0x%X \n", read_buf);
+    // printf("\n READ DECIMAL DATA: %d \n", read_buf);    // read_buf[0]
+    
     status = true;
     
     return status;
@@ -162,14 +171,32 @@ bool Read_EEPROM(int fd){
 
     @param      fd is the device descriptor
 
-    @return     true if read from Si570 all registers was successful and false in other case.
+    @return     true if read from Si570 all registers and calculations was successful and false in other case.
 *******************************************************************************/
-bool Read_Si570(int fd){
+
+bool iic_rd(int &fd, const unsigned char* addr, unsigned char* &data) {
+
+
+
+    if ( write(fd, addr, 1) != 1 ){
+        std::cout << "\n EEPROM CHOOSE OF " << 1 << " REG - FAILED \n";
+        return false;
+    }
+
+    if ( read(fd, data, 4) != 4 ){
+        std::cout << "\n  EEPROM READ - FAIL ON " << 1 << " REG \n";
+        return false;
+    }
+
+    return true;
+}
+
+bool Read_Si570(int fd, unsigned char &addr, unsigned char &data){
     std::cout << "\n START FULL READ Si570 \n";
 
     bool status = false;
 
-    unsigned char write_buf[6] = {7, 8, 9, 10, 11, 12};
+    unsigned char write_buf[6] = {7, 8, 9, 10, 11, 12};                 // Registers from datasheet
     unsigned char read_buf[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
     if (ioctl(fd, I2C_SLAVE_FORCE, Si570_addr) < 0){
@@ -180,7 +207,7 @@ bool Read_Si570(int fd){
     for (int i = 0; i < 6; i++){
 
         if (write(fd, &write_buf[i], 1) != 1){
-            std::cout << "\n READ ALL Si570 - FAIL ON " << i << " REG \n";
+            std::cout << "\n Si570 CHOOSE OF " << i << " REG - FAILED \n";
             return status;
         }
 
@@ -193,9 +220,7 @@ bool Read_Si570(int fd){
         printf("\n CHECK READ = 0x%X \n", read_buf[i]);
     }
 
-    Freq_calculaton(read_buf);
-
-    status = true;
+    status = Freq_calculation(read_buf);
 
     return status;
 }
@@ -206,38 +231,52 @@ bool Read_Si570(int fd){
 
     @param      read_buf is a buffer that stores the value from the Si570 registers 
 
-    @return     returns fully calculated frequency from Si570
+    @return     returns true if calculation was successful
 *******************************************************************************/
 template <size_t size>
-float Freq_calculaton(unsigned char (&read_buf)[size]){
+bool Freq_calculation(unsigned char (&read_buf)[size]){
     std::cout << "\n START CALCULATION OF FREQUENCY FROM Si570 \n";
 
     std::ostringstream ss;
-    float result       = 0;
-    float factory_fout = 156.25;  // In MHz (Info from dts)
+
+    bool  status        = false;
+    float result        = 0;
 
     uint8_t HS_DIV   = (read_buf[0] >> 5 & 0b00000111) + 4;                                     // HS_DIV takes up only 3 bits and we need to add +4 bcs datasheet says this
-    
+        
     uint8_t N1       = (read_buf[0] << 3 & 0b1111100) + (read_buf[1] >> 6 & 0b0000011) + 1;     // We need 0b00000011, but we need to add +1 bcs datasheet says that data writes in registers with -1 (Look datasheet for more info)
+    
+    float   RFREQ    = (read_buf[1] & 0b00111111);
 
-    float RFREQ        = (read_buf[1] & 0b00111111);
 
+    ss << std::hex << std::uppercase << RFREQ;                              // Add 6 bits cut from register 8
 
-    ss << std::hex << std::uppercase << RFREQ;   // Add 6 bits cut from register 8
+    for (int i = 2; i < sizeof(read_buf); i++){                             // i = 2, bcs first 2 bits were disassembled on N1, HS_DIV & RFREQ
+        
+        if (read_buf[i] <= 15){
+            ss << std::hex << std::uppercase << "0";                        // Need to add 0 for correct calculation, bcs we need 9 hex bits
+        }
 
-    for (int i = 2; i < sizeof(read_buf); i++){
         ss << std::hex << std::uppercase << static_cast<int>(read_buf[i]);  // Add another registers (static_cast<int> need to change unsigned char to int)
     }
 
+
     std::cout << "\n RFREQ IN HEX: " << ss.str() << "\n";
     
-    RFREQ = std::stoi(ss.str(), nullptr, 16); // Change string to int
+    RFREQ = std::stoll(ss.str(), nullptr, 16);              // Change string to int
 
     RFREQ = RFREQ / pow(2, 28);
 
-    result = (factory_fout * HS_DIV * N1) / RFREQ;  // Formula
+    result = (Si570_Startup_Freq * HS_DIV * N1) / RFREQ;    // Formula from datasheet
 
     std::cout << "\n REAL FREQUENCY: " << result << "\n";
 
-    return result;
+    if (result > 945 && result < 10){
+        std::cout << "FREQUENCY ERROR - NUMBER OUT OF RANGE";
+        return status;
+    }
+
+    status = true;
+    
+    return status;
 }

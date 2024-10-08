@@ -18,6 +18,7 @@ int main(){
     bool status;
     int fd;
 
+
     std::string syspath = "/sys/class/i2c-dev";
 
     std::string clkname;
@@ -25,17 +26,25 @@ int main(){
 
     std::cout << "\n START PROGRAMM \n";
     
-    fd = Open_dev(Si570_dev);
+    // fd = Open_dev(Si570_dev);
 
-    // for (int i = 7; i < 13; i++){
-    //     status = Read_Si570_Reg(fd, i);
-    //     Stat_check(status, "\n FAILED READING FROM Si570 \n");
-    // }
+    // status = Read_Si570(fd);
+    // Stat_check(status, "\n READ FROM ALL REGS - FAILED \n");
 
-    Read_Si570(fd);
+    fd = Open_dev(EEPROM_dev);
 
-    // fd = Open_dev(EEPROM_dev);
+    if (ioctl(fd, I2C_SLAVE_FORCE, EEMPROM_addr) < 0){
+        std::cout << "\n CANNOT REACH SLAVE (EEPROM) \n";
+        return false;
+    }
 
+    unsigned char addr = 0x0;
+    // std::cout << "\n addr main: \n" << addr << " end" << std::endl;
+    printf("\n addr main: \n %d end \n", addr);
+    unsigned char *data;
+
+    if ( iic_rd(fd, &addr, data) )
+        printf("\n DATA: 0x%X \n", *(data+2));
     // status = Write_EEPROM(fd, 0xFF);
     // Stat_check(status, "\n FAILED WRITING TO EEPROM \n");
 
