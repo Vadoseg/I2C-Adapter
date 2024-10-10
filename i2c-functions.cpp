@@ -28,28 +28,6 @@ void Stat_check(bool status, std::string msg){
 
 }
 
-/*****************************************************
-
-    @brief      Opening device as fd
-    
-    @param      dev_path is descriptor of device path 
-
-    @return     Opened file as integer
-*****************************************************/
-int Open_dev(std::string dev_path){
-    int fd;
-
-    fd = open (dev_path.c_str(), O_RDWR);
-
-    if (fd == -1) {
-    
-        std::cout << "\nDevice not opened.\n";
-        return -1;
-    }
-
-    return fd;
-}
-
 /*******************************************************************************
 
     @brief      Reading from Si570
@@ -156,9 +134,6 @@ bool Read_EEPROM(int fd){
 
     printf("\n CHECK READ = 0x%X \n", read_buf[0]);    
     printf("\n READ DECIMAL DATA: %d \n", read_buf[0]);
-
-    // printf("\n CHECK READ = 0x%X \n", read_buf);
-    // printf("\n READ DECIMAL DATA: %d \n", read_buf);    // read_buf[0]
     
     status = true;
     
@@ -173,24 +148,6 @@ bool Read_EEPROM(int fd){
 
     @return     true if read from Si570 all registers and calculations was successful and false in other case.
 *******************************************************************************/
-
-bool iic_rd(int &fd, const unsigned char* addr, unsigned char* &data) {
-
-
-
-    if ( write(fd, addr, 1) != 1 ){
-        std::cout << "\n EEPROM CHOOSE OF " << 1 << " REG - FAILED \n";
-        return false;
-    }
-
-    if ( read(fd, data, 4) != 4 ){
-        std::cout << "\n  EEPROM READ - FAIL ON " << 1 << " REG \n";
-        return false;
-    }
-
-    return true;
-}
-
 bool Read_Si570(int fd, unsigned char &addr, unsigned char &data){
     std::cout << "\n START FULL READ Si570 \n";
 

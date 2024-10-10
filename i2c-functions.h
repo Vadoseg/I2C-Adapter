@@ -3,9 +3,6 @@
 #define SRC_I2C_FUNCTIONS_H_
 
 #include <iostream>
-#include <cstdint>
-
-
 
 #define Si570_dev               "/dev/i2c-1"
 #define Si570_addr              0x5D
@@ -29,7 +26,5 @@ bool Read_EEPROM        (int fd);
 
 template <size_t size>
 bool Freq_calculation   (unsigned char (&read_buf)[size]);
-
-bool iic_rd(int &fd, const unsigned char* addr, unsigned char* &data);
 
 #endif /* SRC_I2C-FUNCTIONS_H_ */
