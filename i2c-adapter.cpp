@@ -7,12 +7,6 @@
 
 #include "i2c-functions.h"
 
-// #include "device.h"
-
-// https://habr.com/ru/articles/413249/
-// https://www.kernel.org/doc/Documentation/i2c/dev-interface
-// https://www.abelectronics.co.uk/kb/article/1092/i2c-part-3-i2c-tools-in-linux#:~:text=Available%20Commands%20in%20I2C%20Tools&text=i2cdump%20Examine%20and%20read%20I2C,transfer%20to%20a%20connected%20device.
-
 
 int main(){
     bool status;
