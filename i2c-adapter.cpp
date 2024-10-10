@@ -20,10 +20,10 @@ int main(){
 
     std::cout << "\n START PROGRAMM \n";
     
-    // fd = Open_dev(Si570_dev);
+    fd = Open_dev(Si570_dev);
 
-    // status = Read_Si570(fd);
-    // Stat_check(status, "\n READ FROM ALL REGS - FAILED \n");
+    status = Read_Si570(fd);
+    Stat_check(status, "\n READ FROM ALL REGS - FAILED \n");
 
     fd = Open_dev(EEPROM_dev);
 
@@ -32,18 +32,11 @@ int main(){
         return false;
     }
 
-    unsigned char addr = 0x0;
-    // std::cout << "\n addr main: \n" << addr << " end" << std::endl;
-    printf("\n addr main: \n %d end \n", addr);
-    unsigned char *data;
+    status = Write_EEPROM(fd, 0xFF);
+    Stat_check(status, "\n FAILED WRITING TO EEPROM \n");
 
-    if ( iic_rd(fd, &addr, data) )
-        printf("\n DATA: 0x%X \n", *(data+2));
-    // status = Write_EEPROM(fd, 0xFF);
-    // Stat_check(status, "\n FAILED WRITING TO EEPROM \n");
-
-    // status = Read_EEPROM(fd);
-    // Stat_check(status, "\n FAILED READING FROM EEPROM \n");
+    status = Read_EEPROM(fd);
+    Stat_check(status, "\n FAILED READING FROM EEPROM \n");
 
     return 0;
 }
