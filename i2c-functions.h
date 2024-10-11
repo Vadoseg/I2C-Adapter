@@ -16,7 +16,6 @@
 #define Si570_Startup_Freq      148.5   // In MHz (Info from dts)
 
 void Stat_check         (bool status, std::string msg);
-int  Open_dev           (std::string dev_path);
 
 bool Read_Si570_Reg     (int fd, unsigned char reg_num);
 bool Read_Si570         (int fd);

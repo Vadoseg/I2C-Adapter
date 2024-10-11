@@ -112,7 +112,7 @@ bool Read_EEPROM(int fd){
     std::cout << "\n START READING FROM EEPROM \n";
 
     bool status = false;
-    unsigned char write_buf[1] = {0x1};
+    unsigned char write_buf[1] = {0x0};
 
     unsigned char read_buf [1] = {0x0};
 
@@ -148,7 +148,7 @@ bool Read_EEPROM(int fd){
 
     @return     true if read from Si570 all registers and calculations was successful and false in other case.
 *******************************************************************************/
-bool Read_Si570(int fd, unsigned char &addr, unsigned char &data){
+bool Read_Si570(int fd){
     std::cout << "\n START FULL READ Si570 \n";
 
     bool status = false;

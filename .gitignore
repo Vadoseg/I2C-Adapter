@@ -32,3 +32,4 @@
 *.app
 iic_rw.cpp
 iic_rw.h
+iic_test.cpp
