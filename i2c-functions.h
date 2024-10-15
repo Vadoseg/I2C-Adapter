@@ -12,8 +12,7 @@
 
 #define EEPROM_dev              "/dev/i2c-3"
 #define EEMPROM_addr            0x54
-#define EEPROM_PAGESIZE 16
-
+#define EEPROM_PAGESIZE         16
 
 #define Si570_Startup_Freq      148.5   // In MHz (Info from dts)
 
